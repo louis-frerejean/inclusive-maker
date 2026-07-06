@@ -4,10 +4,13 @@ pneumatique.
 L'ESP32 (hardware + firmware, cablage de la pompe) est gere par Cecile. Notre role
 (Fork 1) se limite a envoyer la bonne commande au bon moment.
 
-Protocole propose (a valider avec Cecile) : lignes ASCII terminees par "\n" :
-    "FERMER" -> fermer/serrer le gant
-    "OUVRIR" -> ouvrir/relacher le gant
-    "PING"   -> signal de vie, pour un eventuel watchdog cote ESP32
+Protocole (voir arduino/Pomp_control_V3) : lignes ASCII terminees par "\n" :
+    "SERRER"    -> lance le gonflage (serrage)
+    "DESSERRER" -> lance le relachement de pression (desserrage)
+    "STOP"      -> fige pompe et vanne, maintient la pression actuelle
+    "REGONFLER" -> recharge courte sans repasser par un gonflage complet
+    "URGENCE"   -> force l'arret d'urgence (equivalent au bouton physique)
+    "PING"      -> signal de vie, pour le watchdog cote ESP32
 
 Avant la premiere utilisation, appairer l'ESP32 avec le Pi (une seule fois) :
     bluetoothctl
@@ -50,13 +53,25 @@ class GantLink:
                 break
             time.sleep(KEEPALIVE_INTERVAL_S)
 
-    def open_glove(self):
-        self._send_line("OUVRIR")
-        print("[ACTION] Commande envoyee a l'ESP32 : OUVRIR")
+    def serrer(self):
+        self._send_line("SERRER")
+        print("[ACTION] Commande envoyee a l'ESP32 : SERRER")
 
-    def close_glove(self):
-        self._send_line("FERMER")
-        print("[ACTION] Commande envoyee a l'ESP32 : FERMER")
+    def desserrer(self):
+        self._send_line("DESSERRER")
+        print("[ACTION] Commande envoyee a l'ESP32 : DESSERRER")
+
+    def stop(self):
+        self._send_line("STOP")
+        print("[ACTION] Commande envoyee a l'ESP32 : STOP")
+
+    def regonfler(self):
+        self._send_line("REGONFLER")
+        print("[ACTION] Commande envoyee a l'ESP32 : REGONFLER")
+
+    def urgence(self):
+        self._send_line("URGENCE")
+        print("[ACTION] Commande envoyee a l'ESP32 : URGENCE")
 
     def close(self):
         self._stop_keepalive.set()

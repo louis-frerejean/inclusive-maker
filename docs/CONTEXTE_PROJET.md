@@ -169,20 +169,53 @@ faire nous-mêmes — seul le protocole d'échange (quel texte/code envoyer, à 
 doit être proposé et validé avec Cécile, puisqu'elle a dit "à vous de voir comment
 interfacer".
 
-## État du code (2026-07-03)
+## État du code (2026-07-06)
 
 - `voice_recognition.py` + `keyword_actions.py` : reconnaissance vocale locale (Vosk)
-  fonctionnelle. Vocabulaire mis à jour pour coller au vrai produit : **"ouvrir"** /
-  **"fermer"** (plus "allume"/"stop" qui étaient spécifiques à la démo LED du POC).
-- `gant_link.py` : **nouveau** — client Bluetooth (RFCOMM) côté Pi qui envoie les
-  commandes `OUVRIR` / `FERMER` (+ un `PING` de garde) à l'ESP32. C'est notre seule
-  responsabilité côté hardware/liaison — le firmware ESP32 lui-même est fait par Cécile.
-  Protocole à confirmer avec elle une fois son schéma reçu.
-- Tant que l'ESP32 n'est pas appairé (adresse MAC inconnue), `keyword_actions.py`
-  retombe automatiquement sur la LED ACT du Pi comme simulation (variable d'env
-  `GANT_BT_MAC` à définir pour basculer sur le vrai Bluetooth).
-- Prochaine étape technique (pas encore faite) : mot déclencheur (wake word) avant
-  d'écouter "ouvrir"/"fermer", pour éviter les faux déclenchements sur une conversation.
+  fonctionnelle, avec mot déclencheur ("wake up" par défaut, `GANT_WAKE_WORD` pour
+  changer) ouvrant une fenêtre d'écoute de 5s, et grammaire Vosk contrainte
+  (`vosk_grammar()`) pour limiter les confusions phonétiques. **Testé sur le Pi
+  (2026-07-06) : "wake up" bien reconnu** malgré le modèle Vosk français
+  (`vosk-model-small-fr-0.22`).
+- `gant_link.py` : client Bluetooth (RFCOMM) côté Pi. Tant que l'ESP32 n'est pas
+  défini (`GANT_BT_MAC` non renseignée), `keyword_actions.py` retombe sur la LED
+  ACT du Pi comme simulation locale.
+- **Machine à états redéfinie (2026-07-06)**, plus fine que la version initiale à 3
+  états — voir `arduino/Pomp_control_V3/Pomp_control_v3/Pomp_control_v3.ino` :
+
+  | État | Sortie | Déclenché par | Auto |
+  |---|---|---|---|
+  | INACTIF | pompe OFF, vanne ON | "desserrer" (après 8s), reset urgence | — |
+  | SERRAGE | pompe ON, vanne OFF | "serrer" (depuis INACTIF/STOP) | → STOP après 8s (gonflage complet) |
+  | DESSERRAGE | pompe OFF, vanne ON | "desserrer" (depuis STOP/SERRAGE) | → INACTIF après 8s |
+  | STOP | pompe OFF, vanne OFF | "stop" (depuis SERRAGE/DESSERRAGE/REGONFLAGE) | — |
+  | REGONFLAGE | pompe ON, vanne OFF | "regonfler" (depuis STOP uniquement) | → STOP après 2s |
+  | ARRET_URGENCE | pompe OFF, vanne ON | bouton physique **ou** mot vocal "urgence" | — (reset manuel par bouton uniquement) |
+
+  Mots-ordres vocaux : **"serrer"**, **"desserrer"**, **"stop"**, **"regonfler"**,
+  **"urgence"** (+ "wake up" pour le mot déclencheur). "urgence" contourne
+  volontairement la fenêtre d'écoute (reconnu à tout moment, pas de délai avant un
+  arrêt d'urgence réel). Le bouton physique n'est plus le cycle générique d'origine :
+  il est maintenant dédié à l'arrêt d'urgence (1er appui = urgence, 2e appui = reset
+  vers INACTIF), correspondant à la fonction "bouton de sécurité" du cahier des
+  charges. Durées : gonflage complet et désserrage = 8s chacun (désserrage repris par
+  symétrie, pas de valeur donnée séparément — à confirmer), regonflage = 2s.
+  Fail-safe perte liaison Bluetooth : retombe en INACTIF (pas ARRET_URGENCE, pour ne
+  pas exiger de reset manuel à chaque micro-coupure).
+
+  **Non encore testé sur le Pi/la vraie pompe** (contrairement à l'ancien modèle
+  ouvrir/fermer à 3 états, qui lui a été validé bout-en-bout le 2026-07-06 avant
+  cette refonte) — à retester avant la soutenance. **À confirmer avec Cécile** avant
+  de reflasher : le mapping des états, les durées choisies, et le rôle du bouton
+  physique redéfini en arrêt d'urgence.
+
+## À faire
+
+- **Retour sonore (bip) au déblocage/reverrouillage du mot déclencheur** : prévu
+  par le cahier des charges ("juste des bips"), tenté le 2026-07-06 via
+  `sounddevice`/`numpy` mais retiré du code — le Pi n'a pas de sortie audio par
+  défaut configurée (`sd.play()` échoue avec "Error querying device -1"). À refaire
+  une fois une sortie audio disponible/configurée sur le Pi (jack, USB, ou autre).
 
 ## Relation avec le POC précédent (voir RECAP.md)
 

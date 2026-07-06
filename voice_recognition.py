@@ -10,7 +10,7 @@ from pathlib import Path
 import sounddevice as sd
 from vosk import KaldiRecognizer, Model, SetLogLevel
 
-from keyword_actions import check_keywords
+from keyword_actions import check_keywords, vosk_grammar
 
 SetLogLevel(-1)
 
@@ -61,7 +61,10 @@ def main():
     samplerate = int(device_info["default_samplerate"])
 
     model = Model(str(args.model))
-    recognizer = KaldiRecognizer(model, samplerate)
+    # Grammaire contrainte : Vosk ne peut reconnaitre que le mot declencheur,
+    # "ouvrir"/"fermer", ou "[unk]" pour tout le reste. Reduit les confusions
+    # par rapport a une reconnaissance libre sur tout le vocabulaire francais.
+    recognizer = KaldiRecognizer(model, samplerate, json.dumps(vosk_grammar()))
 
     print("Ecoute en cours... (Ctrl+C pour arreter)")
 
