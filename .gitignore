@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Vosk models (telecharges par install.sh)
+models/
+
+# Logs
+logs/
+*.log
+
+# Ressources fournies par l'intervenante : contient des enregistrements
+# audio d'interview et des PDF tiers, non destines a etre publies
+docs/Ressources mis a disposition par l'intervenante/
+
+# OS
+.DS_Store
+Thumbs.db
