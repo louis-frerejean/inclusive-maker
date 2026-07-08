@@ -1,36 +1,36 @@
-# Inclusive Maker - Version experimentale (GPIO direct, Pi 5)
+# Inclusive Maker - Version demo (Grove LCD RGB Backlight, Pi 5)
 
-**Statut : exploration, pas utilisee pour la soutenance du 2026-07-09.** La
-version qui sert de reference est [`../bluetooth_esp32/`](../bluetooth_esp32/)
-(Pi -> Bluetooth -> ESP32 -> pompe, deja testee).
-
-## Idee
-
-Le Pi 5 recu a une carte d'extension GPIO (actuellement sur breadboard). Au
-lieu de faire transiter les commandes par Bluetooth vers un ESP32 qui pilote
-lui-meme la pompe/vanne, cette variante fait piloter les relais pompe/vanne
-**directement par les GPIO du Pi** - `gpio_link.py` reprend la machine a
-etats du firmware ESP32 de Cecile (`Pomp_control_v3.ino`) mais l'execute cote
-Pi en Python.
+**Version utilisee pour la soutenance du 2026-07-09.** Contrairement a
+[`../bluetooth_esp32/`](../bluetooth_esp32/) (Pi -> Bluetooth -> ESP32 ->
+pompe reelle), aucune pompe ni ESP32 n'est branche pour la demo : seul un
+ecran **Grove LCD RGB Backlight v4.0** est cable sur le breadboard, relie en
+I2C au Pi 5. Il affiche l'ordre qui serait envoye a la pompe (texte +
+couleur de retroeclairage), pour simuler visuellement le comportement sans
+materiel pneumatique sur scene.
 
 `voice_recognition.py` est une copie inchangee de la version Bluetooth (rien
-la dedans n'est specifique au transport). `keyword_actions.py` est adapte
-pour importer `GpioLink` au lieu de `GantLink`.
+la dedans n'est specifique au mode d'affichage). `keyword_actions.py` est
+adapte pour importer `LcdLink` au lieu de `GantLink`. `lcd_link.py` reprend
+la machine a etats du firmware ESP32 de Cecile (`Pomp_control_v3.ino`,
+memes durees : gonflage 8s, desserrage 5s, regonflage 2s) mais l'affiche sur
+le LCD au lieu de piloter des relais.
 
-## Ce qui manque avant de brancher une vraie pompe
+## Cablage
 
-- **Cablage non verifie** : `POMPE_PIN`/`VANNE_PIN` dans `gpio_link.py` sont
-  des numeros BCM par defaut (17/27), pas encore confirmes contre le cablage
-  reel de la carte d'extension + breadboard. A adapter via les variables
-  d'environnement `GANT_GPIO_POMPE_PIN` / `GANT_GPIO_VANNE_PIN`.
-- **Polarite des relais** (`active_high=False` suppose un relais actif bas,
-  comme sur l'ESP32) a verifier sur le module reellement utilise.
-- **Perte du fail-safe materiel** : sur l'ESP32, une carte separee coupe la
-  pompe automatiquement si la liaison avec le Pi tombe (watchdog PING,
-  independant d'un plantage du Pi). Ici, si le Pi gele ou plante, plus rien
-  ne coupe les relais tout seul. A ne pas utiliser sur la pompe reelle sans
-  watchdog materiel independant.
-- **Jamais teste avec une pompe/vanne reelles.**
+Grove LCD RGB Backlight v4.0 sur breadboard, relie au bus I2C du Pi 5 :
+
+| Grove | Pi 5 |
+|---|---|
+| GND | GND |
+| VCC | 5V |
+| SDA | GPIO2 (SDA) |
+| SCL | GPIO3 (SCL) |
+
+Avant de lancer quoi que ce soit :
+
+1. Activer l'I2C : `sudo raspi-config` -> *Interface Options* -> *I2C* -> activer, puis redemarrer.
+2. Verifier que le module est vu : `sudo i2cdetect -y 1`. On doit voir apparaitre `3e` (texte) et `30` ou `62` (retroeclairage RGB selon la version - le v4.0 utilise normalement `0x30`, l'ancien v2.0 `0x62`).
+3. Si l'adresse RGB detectee n'est pas `0x30`, la surcharger : `export GANT_LCD_RGB_ADDR=0x62` (ou l'adresse vue par `i2cdetect`) avant de lancer `voice_recognition.py`.
 
 ## Installation
 
@@ -45,8 +45,16 @@ pip install -r requirements.txt
 python voice_recognition.py --model ../bluetooth_esp32/models/vosk-model-small-fr-0.22 --list-devices
 ```
 
-## Tester la machine a etats sans relais branches
+## Tester sans le LCD branche
 
-`GANT_GPIO_DISABLE=1 python voice_recognition.py --model ...` retombe sur la
+`GANT_LCD_DISABLE=1 python voice_recognition.py --model ...` retombe sur la
 simulation LED ACT (comme la version Bluetooth quand `GANT_BT_MAC` n'est pas
 defini), pour valider la reconnaissance vocale seule.
+
+## A savoir
+
+- Rien ici ne pilote de materiel pneumatique reel : c'est le mode le plus
+  sur pour une demo live (pas de relais, pas d'actionneur).
+- Comme pour la version Bluetooth, aucune commande de reset n'existe pour
+  sortir de `ARRET_URGENCE` autrement qu'en relancant le script (le firmware
+  ESP32 utilise un bouton physique pour ca, absent ici).

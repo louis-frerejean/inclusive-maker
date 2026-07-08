@@ -1,4 +1,3 @@
 vosk
 sounddevice
-gpiozero
-lgpio
+smbus2

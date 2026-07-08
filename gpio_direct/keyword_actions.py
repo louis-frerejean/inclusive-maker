@@ -1,16 +1,17 @@
 """Detection de mots-cles et envoi de la commande au gant (Fork 1 - Inclusiv'Maker).
 
-EXPERIMENTAL (voir gpio_link.py) : variante de bluetooth_esp32/keyword_actions.py
-ou le Raspberry Pi pilote directement la pompe/vanne via GPIO (carte
-d'extension sur breadboard), sans passer par l'ESP32. Tant que le GPIO n'est
-pas disponible (ex: execution hors du Pi, ou GANT_GPIO_DISABLE positionne),
-on retombe sur la LED ACT du Pi comme simulation locale, utile pour tester
-la reconnaissance vocale seule.
+DEMO (voir lcd_link.py) : variante de bluetooth_esp32/keyword_actions.py ou
+le Raspberry Pi affiche directement les ordres pompe sur un ecran Grove LCD
+RGB Backlight v4.0 (I2C, sur breadboard), sans ESP32 ni pompe physiquement
+branches - utilise pour la soutenance du 2026-07-09. Tant que le LCD n'est
+pas disponible (ex: execution hors du Pi, I2C non branche/active, ou
+GANT_LCD_DISABLE positionne), on retombe sur la LED ACT du Pi comme
+simulation locale, utile pour tester la reconnaissance vocale seule.
 
-Definir la variable d'environnement GANT_GPIO_DISABLE (n'importe quelle
-valeur) pour desactiver le pilotage GPIO reel et forcer la simulation LED.
+Definir la variable d'environnement GANT_LCD_DISABLE (n'importe quelle
+valeur) pour desactiver l'affichage LCD reel et forcer la simulation LED.
 
-Etats de la pompe (voir gpio_link.py, porte depuis
+Etats de la pompe (voir lcd_link.py, porte depuis
 bluetooth_esp32/arduino/Pomp_control_V3) : INACTIF, SERRAGE, DESSERRAGE,
 STOP, REGONFLAGE, ARRET_URGENCE. Mots-ordres vocaux : "fermer" (declenche
 SERRAGE), "ouvrir" (declenche DESSERRAGE), "stop", "regonfler", "help" (declenche
@@ -43,7 +44,7 @@ import time
 import unicodedata
 from pathlib import Path
 
-from gpio_link import GpioLink
+from lcd_link import LcdLink
 
 LED_BRIGHTNESS_FILE = Path("/sys/class/leds/ACT/brightness")
 
@@ -88,11 +89,11 @@ def vosk_grammar():
 
 _gant_link = None
 
-if os.environ.get("GANT_GPIO_DISABLE") is None:
+if os.environ.get("GANT_LCD_DISABLE") is None:
     try:
-        _gant_link = GpioLink()
+        _gant_link = LcdLink()
     except Exception as e:
-        print(f"[GPIO] Initialisation impossible ({e}) - retour en simulation LED")
+        print(f"[LCD] Initialisation impossible ({e}) - retour en simulation LED")
         _gant_link = None
 
 _state_lock = threading.Lock()
