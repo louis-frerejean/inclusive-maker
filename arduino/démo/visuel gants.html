@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Visuel des gants</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #0f172a;
+        color: #f8fafc;
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+      }
+      .card {
+        width: min(92vw, 720px);
+        background: #111827;
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+      }
+      h1 {
+        margin-top: 0;
+        font-size: 1.4rem;
+      }
+      .status {
+        margin: 8px 0 20px;
+        font-size: 1rem;
+        color: #cbd5e1;
+      }
+      .hand-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(180px, 1fr));
+        gap: 18px;
+        justify-items: center;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+      .hand-card {
+        width: 100%;
+        max-width: 320px;
+        padding: 18px;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .hand-card h2 {
+        margin: 0 0 10px;
+        font-size: 1rem;
+        letter-spacing: 0.02em;
+      }
+      .hand-svg {
+        width: 100%;
+        height: auto;
+      }
+      .hand-svg svg {
+        width: 100%;
+        height: 220px;
+      }
+      .finger {
+        transition: transform 0.35s ease, opacity 0.35s ease;
+        transform-origin: 110px 110px;
+      }
+      .finger-1 { transform: rotate(0deg); }
+      .finger-2 { transform: rotate(0deg); }
+      .finger-3 { transform: rotate(0deg); }
+      .finger-4 { transform: rotate(0deg); }
+      .finger-5 { transform: rotate(0deg); }
+      .state-fermer .finger-1 { transform: rotate(-28deg); }
+      .state-fermer .finger-2 { transform: rotate(-22deg); }
+      .state-fermer .finger-3 { transform: rotate(-16deg); }
+      .state-fermer .finger-4 { transform: rotate(-10deg); }
+      .state-fermer .finger-5 { transform: rotate(-4deg); }
+      .state-ouvrir .finger-1 { transform: rotate(26deg); }
+      .state-ouvrir .finger-2 { transform: rotate(18deg); }
+      .state-ouvrir .finger-3 { transform: rotate(10deg); }
+      .state-ouvrir .finger-4 { transform: rotate(2deg); }
+      .state-ouvrir .finger-5 { transform: rotate(-4deg); }
+      .state-stop .finger-1 { transform: rotate(-8deg); }
+      .state-stop .finger-2 { transform: rotate(-4deg); }
+      .state-stop .finger-3 { transform: rotate(0deg); }
+      .state-stop .finger-4 { transform: rotate(4deg); }
+      .state-stop .finger-5 { transform: rotate(8deg); }
+      .state-stop .hand-shape { stroke: #fbbf24; }
+      .controls {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+      .control {
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: rgba(148, 163, 184, 0.08);
+        border: 1px solid rgba(148, 163, 184, 0.14);
+      }
+      .control strong {
+        display: block;
+        font-size: 0.95rem;
+        margin-bottom: 8px;
+        color: #e2e8f0;
+      }
+      .value {
+        font-size: 1.2rem;
+        font-weight: 700;
+      }
+      .value.on { color: #34d399; }
+      .value.off { color: #f87171; }
+      .actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+      }
+      .action-pill {
+        padding: 10px 14px;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.1);
+        color: #cbd5e1;
+        font-size: 0.95rem;
+      }
+      .action-pill.active {
+        background: #2563eb;
+        color: white;
+      }
+      .legend {
+        margin-top: 12px;
+        font-size: 0.95rem;
+        color: #94a3b8;
+      }
+      @media (max-width: 640px) {
+        .hand-grid {
+          grid-template-columns: 1fr;
+        }
+        .controls {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Visuel du gant pneumatique</h1>
+      <div class="status" id="status">Attente de la commande…</div>
+      <div class="controls">
+        <div class="control">
+          <strong>État Raspberry</strong>
+          <span class="value" id="raspberry-state">Inconnu</span>
+        </div>
+        <div class="control">
+          <strong>Valve</strong>
+          <span class="value off" id="valve-state">OFF</span>
+        </div>
+        <div class="control">
+          <strong>Pompe</strong>
+          <span class="value off" id="pump-state">OFF</span>
+        </div>
+      </div>
+      <div class="actions" id="actions">
+        <span class="action-pill" id="action-ouvrir">ouvrir</span>
+        <span class="action-pill" id="action-fermer">fermer</span>
+        <span class="action-pill" id="action-stop">stop</span>
+      </div>
+      <div class="hand-grid">
+        <div class="hand-card">
+          <h2>Gant gauche</h2>
+          <div class="hand-svg hand" id="hand-left">
+            <svg viewBox="0 0 320 260" aria-label="Gant gauche">
+              <rect x="95" y="70" width="130" height="115" rx="40" fill="none" stroke="#f8fafc" stroke-width="6" class="hand-shape" />
+              <line x1="110" y1="95" x2="80" y2="60" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" class="finger finger-1" />
+              <line x1="132" y1="95" x2="110" y2="40" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" class="finger finger-2" />
+              <line x1="154" y1="95" x2="150" y2="30" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" class="finger finger-3" />
+              <line x1="176" y1="95" x2="190" y2="40" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" class="finger finger-4" />
+              <line x1="198" y1="95" x2="240" y2="60" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" class="finger finger-5" />
+            </svg>
+          </div>
+        </div>
+        <div class="hand-card">
+          <h2>Gant droit</h2>
+          <div class="hand-svg hand" id="hand-right">
+            <svg viewBox="0 0 320 260" aria-label="Gant droit">
+              <rect x="95" y="70" width="130" height="115" rx="40" fill="none" stroke="#f8fafc" stroke-width="6" class="hand-shape" />
+              <line x1="110" y1="95" x2="80" y2="60" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" class="finger finger-1" />
+              <line x1="132" y1="95" x2="110" y2="40" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" class="finger finger-2" />
+              <line x1="154" y1="95" x2="150" y2="30" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" class="finger finger-3" />
+              <line x1="176" y1="95" x2="190" y2="40" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" class="finger finger-4" />
+              <line x1="198" y1="95" x2="240" y2="60" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" class="finger finger-5" />
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="legend">Le visuel se met à jour automatiquement depuis le Raspberry Pi.</div>
+    </div>
+
+    <script>
+      const statusEl = document.getElementById('status');
+      const handLeft = document.getElementById('hand-left');
+      const handRight = document.getElementById('hand-right');
+      const raspberryStateEl = document.getElementById('raspberry-state');
+      const valveStateEl = document.getElementById('valve-state');
+      const pumpStateEl = document.getElementById('pump-state');
+      const actionOuvrir = document.getElementById('action-ouvrir');
+      const actionFermer = document.getElementById('action-fermer');
+      const actionStop = document.getElementById('action-stop');
+
+      const actionMap = {
+        ouvrir: { valve: 'ON', pump: 'OFF' },
+        fermer: { valve: 'OFF', pump: 'ON' },
+        stop: { valve: 'OFF', pump: 'OFF' },
+      };
+
+      async function loadState() {
+        try {
+          const response = await fetch('../../hand_state.json', { cache: 'no-store' });
+          if (!response.ok) throw new Error('Pas de fichier d’état');
+          const data = await response.json();
+          updateVisual(data);
+        } catch (error) {
+          statusEl.textContent = 'État non disponible pour le moment.';
+          setDefaultState();
+        }
+      }
+
+      function setDefaultState() {
+        raspberryStateEl.textContent = 'Inconnu';
+        valveStateEl.textContent = 'OFF';
+        valveStateEl.className = 'value off';
+        pumpStateEl.textContent = 'OFF';
+        pumpStateEl.className = 'value off';
+        setActionActive(null);
+        handLeft.className = 'hand';
+        handRight.className = 'hand';
+      }
+
+      function updateVisual(data) {
+        const state = (data.state || 'inconnu').toLowerCase();
+        const mapped = actionMap[state] || { valve: 'OFF', pump: 'OFF' };
+
+        statusEl.textContent = `État : ${state} • source : ${data.source || 'inconnue'} • ${data.timestamp || ''}`.trim();
+        raspberryStateEl.textContent = state;
+        valveStateEl.textContent = mapped.valve;
+        valveStateEl.className = `value ${mapped.valve === 'ON' ? 'on' : 'off'}`;
+        pumpStateEl.textContent = mapped.pump;
+        pumpStateEl.className = `value ${mapped.pump === 'ON' ? 'on' : 'off'}`;
+
+        setActionActive(state);
+        handLeft.className = `hand state-${state}`;
+        handRight.className = `hand state-${state}`;
+      }
+
+      function setActionActive(state) {
+        actionOuvrir.classList.toggle('active', state === 'ouvrir');
+        actionFermer.classList.toggle('active', state === 'fermer');
+        actionStop.classList.toggle('active', state === 'stop');
+      }
+
+      loadState();
+      setInterval(loadState, 1000);
+    </script>
+  </body>
+</html>

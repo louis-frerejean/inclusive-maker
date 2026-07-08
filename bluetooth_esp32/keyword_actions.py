@@ -41,6 +41,7 @@ import unicodedata
 from pathlib import Path
 
 from gant_link import GantLink
+from hand_visual_state import write_hand_state
 
 LED_BRIGHTNESS_FILE = Path("/sys/class/leds/ACT/brightness")
 
@@ -144,6 +145,7 @@ def _close_window():
 
 
 def serrer():
+    write_hand_state("fermer")
     if _gant_link:
         _gant_link.serrer()
     else:
@@ -153,6 +155,7 @@ def serrer():
 
 
 def desserrer():
+    write_hand_state("ouvrir")
     if _gant_link:
         _gant_link.desserrer()
     else:
@@ -161,6 +164,7 @@ def desserrer():
 
 
 def stop():
+    write_hand_state("stop")
     if _gant_link:
         _gant_link.stop()
     else:
@@ -168,6 +172,7 @@ def stop():
 
 
 def regonfler():
+    write_hand_state("regonfler")
     if _gant_link:
         _gant_link.regonfler()
     else:
@@ -175,6 +180,7 @@ def regonfler():
 
 
 def urgence():
+    write_hand_state("urgence")
     if _gant_link:
         _gant_link.urgence()
     else:
