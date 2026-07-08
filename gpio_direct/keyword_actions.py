@@ -1,7 +1,6 @@
 """Detection de mots-cles et envoi de la commande au gant (Fork 1 - Inclusiv'Maker).
 
-DEMO (voir lcd_link.py et pump_link.py) : variante de
-bluetooth_esp32/keyword_actions.py ou le Raspberry Pi pilote directement,
+DEMO (voir lcd_link.py et pump_link.py) : le Raspberry Pi pilote directement,
 sans ESP32 : un ecran QAPASS LCD1602 (affichage) ET la vraie pompe/vanne
 (module relais + bouton poussoir fournis par Cecile), en parallele - voir
 _links ci-dessous. Le visuel web de Clemence (hand_state.json) est aussi mis
@@ -13,8 +12,8 @@ simulation locale, utile pour tester la reconnaissance vocale seule.
 Definir GANT_LCD_DISABLE et/ou GANT_PUMP_DISABLE (n'importe quelle valeur)
 pour desactiver l'affichage LCD et/ou la pompe reelle independamment.
 
-Etats de la pompe (voir lcd_link.py, porte depuis
-bluetooth_esp32/arduino/Pomp_control_V3) : INACTIF, SERRAGE, DESSERRAGE,
+Etats de la pompe (voir lcd_link.py, porte depuis l'ancien firmware ESP32
+Pomp_control_v3, retire du depot - voir l'historique git) : INACTIF, SERRAGE, DESSERRAGE,
 STOP, REGONFLAGE, ARRET_URGENCE. Mots-ordres vocaux : "fermer" (declenche
 SERRAGE), "ouvrir" (declenche DESSERRAGE), "stop", "regonfler", "help" (declenche
 ARRET_URGENCE). ("serrer"/"desserrer" abandonnes: meme racine, se confondaient a
@@ -50,9 +49,8 @@ from pathlib import Path
 from lcd_link import LcdLink
 from pump_link import PumpLink
 
-# hand_visual_state.py vit a la racine du depot (partage entre bluetooth_esp32/
-# et gpio_direct/, pour que les deux ecrivent dans le meme hand_state.json lu
-# par arduino/demo/visuel gants.html).
+# hand_visual_state.py vit a la racine du depot, pour ecrire dans le meme
+# hand_state.json lu par arduino/demo/visuel gants.html.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from hand_visual_state import write_hand_state
 

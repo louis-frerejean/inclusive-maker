@@ -14,8 +14,9 @@ fixe (comme sur l'ESP32) et le bouton (tant que le process tourne). A
 verifier avec Cecile si un coupe-circuit materiel independant du Pi est
 possible en complement.
 
-Reprend la machine a etats et les durees du firmware ESP32
-(bluetooth_esp32/arduino/Pomp_control_V3/.../Pomp_control_v3.ino) :
+Reprend la machine a etats et les durees de l'ancien firmware ESP32
+(Pomp_control_v3, version Bluetooth retiree du depot une fois cette version
+validee - voir l'historique git) :
   INACTIF       : pompe OFF, vanne ON  (repos, aucune pression)
   SERRAGE       : pompe ON,  vanne OFF (monte en pression, 8s puis -> STOP)
   DESSERRAGE    : pompe OFF, vanne ON  (relache la pression, 5s puis -> INACTIF)

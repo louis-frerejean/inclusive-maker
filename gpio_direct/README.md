@@ -1,12 +1,14 @@
 # Inclusive Maker - Version demo (QAPASS LCD1602 + pompe reelle, Pi 5)
 
-**Version utilisee pour la soutenance du 2026-07-09.** Contrairement a
-[`../bluetooth_esp32/`](../bluetooth_esp32/) (Pi -> Bluetooth -> ESP32 ->
-pompe reelle), il n'y a plus d'ESP32 du tout : le Pi pilote directement en
-GPIO a la fois un ecran **QAPASS LCD1602** (affichage texte) et la **vraie
-pompe/vanne** (module relais 2 canaux + bouton poussoir, fournis par
-Cecile), en parallele. Le visuel web de Clemence (`arduino/demo/visuel
-gants.html`, a la racine du depot) est aussi mis a jour a chaque commande.
+**Version utilisee pour la soutenance du 2026-07-09.** Pas d'ESP32 : le Pi
+pilote directement en GPIO a la fois un ecran **QAPASS LCD1602** (affichage
+texte) et la **vraie pompe/vanne** (module relais 2 canaux + bouton
+poussoir, fournis par Cecile), en parallele. Le visuel web de Clemence
+(`arduino/demo/visuel gants.html`, a la racine du depot) est aussi mis a
+jour a chaque commande.
+
+(Une version anterieure passait par un ESP32 en Bluetooth - retiree du
+depot une fois cette version validee ; voir l'historique git si besoin.)
 
 ## ATTENTION SECURITE - a lire avant de brancher la pompe
 
@@ -64,8 +66,8 @@ Avant de lancer quoi que ce soit :
 
 ## Installation
 
-Reutilise le meme modele Vosk que `bluetooth_esp32/` (inutile de re-telecharger
-les ~40 Mo) :
+Le modele Vosk (`models/vosk-model-small-fr-0.22`, ~40 Mo) vit a la racine
+du depot, partage avec le reste du projet :
 
 ```bash
 cd gpio_direct
@@ -75,11 +77,26 @@ pip install -r requirements.txt
 python voice_recognition.py --model ../models/vosk-model-small-fr-0.22 --list-devices
 ```
 
+## Lancement automatique au demarrage (systemd)
+
+Pour que le Pi lance la reconnaissance vocale tout seul au boot, sans PC ni
+SSH branche (autonomie, cf. ER3 du cahier des charges) :
+
+```bash
+sudo cp systemd/gant-vocal.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now gant-vocal.service
+```
+
+Suivre les logs en direct : `journalctl -u gant-vocal.service -f`. Le
+service redemarre automatiquement en cas de plantage (`Restart=on-failure`)
+- ca ne remplace pas un vrai fail-safe materiel (voir l'avertissement
+securite plus haut), ca evite juste d'avoir a relancer le script a la main.
+
 ## Tester sans LCD ni pompe branches
 
 `GANT_LCD_DISABLE=1 GANT_PUMP_DISABLE=1 python voice_recognition.py --model ...`
-retombe sur la simulation LED ACT (comme la version Bluetooth quand
-`GANT_BT_MAC` n'est pas defini), pour valider la reconnaissance vocale
+retombe sur la simulation LED ACT, pour valider la reconnaissance vocale
 seule. On peut aussi desactiver l'un ou l'autre independamment.
 
 ## A savoir

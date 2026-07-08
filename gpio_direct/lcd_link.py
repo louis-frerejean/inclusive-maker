@@ -1,10 +1,10 @@
 """Affichage sur ecran QAPASS LCD1602 (I2C, backpack PCF8574) des ordres qui
 seraient envoyes a la pompe - utilise pour la demo/soutenance (2026-07-09),
 en l'absence de pompe et d'ESP32 physiquement branches (seul le LCD est sur
-le breadboard). Reprend la meme machine a etats que le firmware ESP32 (voir
-bluetooth_esp32/arduino/Pomp_control_V3/.../Pomp_control_v3.ino), y compris
-les transitions automatiques par duree, mais l'affiche sur le LCD au lieu de
-piloter des relais pompe/vanne.
+le breadboard). Reprend la meme machine a etats que l'ancien firmware ESP32 (Pomp_control_v3,
+version Bluetooth retiree du depot une fois cette version validee - voir
+l'historique git), y compris les transitions automatiques par duree, mais
+l'affiche sur le LCD au lieu de piloter des relais pompe/vanne.
 
 Remplace la premiere version ecrite pour un Grove LCD RGB Backlight v4.0 :
 ce module s'est revele defectueux au test (2026-07-08, ligne SCL bloquee a

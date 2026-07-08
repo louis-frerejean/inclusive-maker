@@ -1,0 +1,23 @@
+[Unit]
+Description=Inclusiv'Maker - reconnaissance vocale commande gant/pompe
+# Attend que le son soit pret avant de demarrer, sinon le peripherique audio
+# peut ne pas encore exister. Plus de dependance Bluetooth/reseau : le
+# systeme est pilote entierement en local (GPIO direct, pas d'ESP32).
+After=sound.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/louis/inclusive-maker/gpio_direct
+# Sans ça, Python bufferise sa sortie et les print() n'apparaissent pas en
+# temps reel dans "journalctl -f" (pas de TTY sous systemd).
+Environment=PYTHONUNBUFFERED=1
+# GANT_WAKE_WORD, GANT_LCD_DISABLE, GANT_PUMP_DISABLE, GANT_LCD_I2C_ADDR,
+# GANT_GPIO_POMPE_PIN/VANNE_PIN/BOUTON_PIN peuvent etre surcharges ici si
+# besoin (voir gpio_direct/README.md) - aucun n'est requis par defaut.
+ExecStart=/home/louis/inclusive-maker/gpio_direct/venv/bin/python /home/louis/inclusive-maker/gpio_direct/voice_recognition.py --model /home/louis/inclusive-maker/models/vosk-model-small-fr-0.22 --device 0
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
