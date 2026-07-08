@@ -1,28 +1,39 @@
-# Inclusive Maker - Version demo (QAPASS LCD1602, Pi 5)
+# Inclusive Maker - Version demo (QAPASS LCD1602 + pompe reelle, Pi 5)
 
 **Version utilisee pour la soutenance du 2026-07-09.** Contrairement a
 [`../bluetooth_esp32/`](../bluetooth_esp32/) (Pi -> Bluetooth -> ESP32 ->
-pompe reelle), aucune pompe ni ESP32 n'est branche pour la demo : seul un
-ecran **QAPASS LCD1602** (I2C, backpack PCF8574) est cable sur le
-breadboard, relie en I2C au Pi 5. Il affiche l'ordre qui serait envoye a la
-pompe (texte), pour simuler visuellement le comportement sans materiel
-pneumatique sur scene.
+pompe reelle), il n'y a plus d'ESP32 du tout : le Pi pilote directement en
+GPIO a la fois un ecran **QAPASS LCD1602** (affichage texte) et la **vraie
+pompe/vanne** (module relais 2 canaux + bouton poussoir, fournis par
+Cecile), en parallele. Le visuel web de Clemence (`arduino/demo/visuel
+gants.html`, a la racine du depot) est aussi mis a jour a chaque commande.
 
-Un premier module (Grove LCD RGB Backlight v4.0) avait ete teste avant
-celui-ci mais s'est revele defectueux (ligne SCL bloquee a l'etat bas
-quel que soit le cablage, confirme le 2026-07-08) - voir l'historique dans
-`lcd_link.py`.
+## ATTENTION SECURITE - a lire avant de brancher la pompe
 
-`voice_recognition.py` est une copie inchangee de la version Bluetooth (rien
-la dedans n'est specifique au mode d'affichage). `keyword_actions.py` est
-adapte pour importer `LcdLink` au lieu de `GantLink`. `lcd_link.py` reprend
-la machine a etats du firmware ESP32 de Cecile (`Pomp_control_v3.ino`,
-memes durees : gonflage 8s, desserrage 5s, regonflage 2s) mais l'affiche sur
-le LCD au lieu de piloter des relais.
+Le gant sera reellement porte pendant la demo. Sur l'ESP32, le bouton
+poussoir etait un fail-safe **materiel independant** du Pi (meme si le Pi
+plantait, l'ESP32 continuait de fonctionner). Ici, le bouton est lu par le
+**meme processus Python** que la reconnaissance vocale : si ce processus se
+bloque ou plante pendant que la pompe est active, ni la coupure
+automatique par duree, ni le bouton ne fonctionnent plus. **A verifier avec
+Cecile si un coupe-circuit materiel independant du Pi est possible en
+complement** (ex: cable directement dans l'alimentation du relais).
+
+**Avant de porter le gant pour la premiere fois :**
+1. Teste tout le pipeline (mot declencheur + toutes les commandes + bouton) **sans que personne ne porte le gant**, en observant juste les clics de relais / le LCD / le visuel web.
+2. Verifie que le bouton poussoir force bien `ARRET_URGENCE` immediatement, et qu'un second appui revient bien a `INACTIF`.
+3. Verifie que les durees automatiques (8s gonflage, 5s desserrage, 2s regonflage) correspondent a ce qui est attendu avant de faire confiance au systeme avec une main dedans.
+
+## Historique
+
+Un premier module d'ecran (Grove LCD RGB Backlight v4.0) avait ete teste
+avant le QAPASS mais s'est revele defectueux (ligne SCL bloquee a l'etat
+bas quel que soit le cablage, confirme le 2026-07-08) - voir l'historique
+dans `lcd_link.py`.
 
 ## Cablage
 
-QAPASS LCD1602 sur breadboard, relie au bus I2C du Pi 5 :
+**Ecran QAPASS LCD1602**, relie au bus I2C du Pi 5 :
 
 | LCD1602 | Pi 5 |
 |---|---|
@@ -31,12 +42,25 @@ QAPASS LCD1602 sur breadboard, relie au bus I2C du Pi 5 :
 | SDA | GPIO2 (SDA1) |
 | SCL | GPIO3 (SCL1) |
 
+**Module relais pompe/vanne + bouton poussoir** (fourni par Cecile), broches
+par defaut (voir `pump_link.py`, surchargeables via `GANT_GPIO_POMPE_PIN` /
+`GANT_GPIO_VANNE_PIN` / `GANT_GPIO_BOUTON_PIN`) :
+
+| Fil | Pi 5 (BCM par defaut) |
+|---|---|
+| 5V | 5V (alimentation du module relais, PAS un GPIO de signal) |
+| GND | GND |
+| Pompe | GPIO17 |
+| Valve | GPIO27 |
+| Bouton | GPIO22 |
+
 Avant de lancer quoi que ce soit :
 
 1. Activer l'I2C : `sudo raspi-config` -> *Interface Options* -> *I2C* -> activer.
-2. Verifier que le module est vu : `sudo i2cdetect -y 1`. On doit voir apparaitre `27` (adresse par defaut du backpack PCF8574).
+2. Verifier que le LCD est vu : `sudo i2cdetect -y 1`. On doit voir apparaitre `27` (adresse par defaut du backpack PCF8574).
 3. Si l'adresse detectee n'est pas `0x27` (cavaliers A0/A1/A2 soudes differemment), la surcharger : `export GANT_LCD_I2C_ADDR=0x3f` (ou l'adresse vue par `i2cdetect`) avant de lancer `voice_recognition.py`.
-4. Si l'ecran s'allume mais que le texte est invisible/flou, ajuster le petit potentiometre bleu au dos du module (contraste) - normal d'avoir besoin d'un reglage plus fin en 3.3V qu'en 5V.
+4. Si l'ecran s'allume mais que le texte est invisible/flou, ajuster le petit potentiometre bleu au dos du module (contraste).
+5. Verifier la polarite du relais : le code suppose un relais actif bas (comme sur l'ESP32, `RELAIS_ON=LOW`) - si pompe/vanne s'activent a l'envers de ce qui est attendu, verifier le module fourni par Cecile.
 
 ## Installation
 
@@ -51,16 +75,17 @@ pip install -r requirements.txt
 python voice_recognition.py --model ../models/vosk-model-small-fr-0.22 --list-devices
 ```
 
-## Tester sans le LCD branche
+## Tester sans LCD ni pompe branches
 
-`GANT_LCD_DISABLE=1 python voice_recognition.py --model ...` retombe sur la
-simulation LED ACT (comme la version Bluetooth quand `GANT_BT_MAC` n'est pas
-defini), pour valider la reconnaissance vocale seule.
+`GANT_LCD_DISABLE=1 GANT_PUMP_DISABLE=1 python voice_recognition.py --model ...`
+retombe sur la simulation LED ACT (comme la version Bluetooth quand
+`GANT_BT_MAC` n'est pas defini), pour valider la reconnaissance vocale
+seule. On peut aussi desactiver l'un ou l'autre independamment.
 
 ## A savoir
 
-- Rien ici ne pilote de materiel pneumatique reel : c'est le mode le plus
-  sur pour une demo live (pas de relais, pas d'actionneur).
-- Comme pour la version Bluetooth, aucune commande de reset n'existe pour
-  sortir de `ARRET_URGENCE` autrement qu'en relancant le script (le firmware
-  ESP32 utilise un bouton physique pour ca, absent ici).
+- `GANT_LCD_DISABLE` et `GANT_PUMP_DISABLE` desactivent chacun leur sortie
+  independamment - utile pour tester une seule chose a la fois.
+- Le bouton physique force `ARRET_URGENCE` depuis n'importe quel etat ; un
+  second appui (en `ARRET_URGENCE`) reinitialise vers `INACTIF` - meme
+  logique que le bouton sur l'ESP32.

@@ -196,6 +196,12 @@ class LcdLink:
     def urgence(self):
         self._changer_etat(ARRET_URGENCE, "commande vocale URGENCE")
 
+    def reset(self):
+        """Reset manuel vers INACTIF - jamais appele automatiquement, sur
+        action explicite seulement (bouton physique en ARRET_URGENCE, voir
+        pump_link.py)."""
+        self._changer_etat(INACTIF, "reset (bouton apres urgence)")
+
     def close(self):
         with self._lock:
             if self._timer:

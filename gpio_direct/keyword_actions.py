@@ -1,15 +1,17 @@
 """Detection de mots-cles et envoi de la commande au gant (Fork 1 - Inclusiv'Maker).
 
-DEMO (voir lcd_link.py) : variante de bluetooth_esp32/keyword_actions.py ou
-le Raspberry Pi affiche directement les ordres pompe sur un ecran Grove LCD
-RGB Backlight v4.0 (I2C, sur breadboard), sans ESP32 ni pompe physiquement
-branches - utilise pour la soutenance du 2026-07-09. Tant que le LCD n'est
-pas disponible (ex: execution hors du Pi, I2C non branche/active, ou
-GANT_LCD_DISABLE positionne), on retombe sur la LED ACT du Pi comme
+DEMO (voir lcd_link.py et pump_link.py) : variante de
+bluetooth_esp32/keyword_actions.py ou le Raspberry Pi pilote directement,
+sans ESP32 : un ecran QAPASS LCD1602 (affichage) ET la vraie pompe/vanne
+(module relais + bouton poussoir fournis par Cecile), en parallele - voir
+_links ci-dessous. Le visuel web de Clemence (hand_state.json) est aussi mis
+a jour a chaque commande, independamment de _links. Si aucun des deux
+(LCD/pompe) n'est disponible (ex: execution hors du Pi, GANT_LCD_DISABLE et
+GANT_PUMP_DISABLE positionnes), on retombe sur la LED ACT du Pi comme
 simulation locale, utile pour tester la reconnaissance vocale seule.
 
-Definir la variable d'environnement GANT_LCD_DISABLE (n'importe quelle
-valeur) pour desactiver l'affichage LCD reel et forcer la simulation LED.
+Definir GANT_LCD_DISABLE et/ou GANT_PUMP_DISABLE (n'importe quelle valeur)
+pour desactiver l'affichage LCD et/ou la pompe reelle independamment.
 
 Etats de la pompe (voir lcd_link.py, porte depuis
 bluetooth_esp32/arduino/Pomp_control_V3) : INACTIF, SERRAGE, DESSERRAGE,
@@ -46,6 +48,7 @@ import unicodedata
 from pathlib import Path
 
 from lcd_link import LcdLink
+from pump_link import PumpLink
 
 # hand_visual_state.py vit a la racine du depot (partage entre bluetooth_esp32/
 # et gpio_direct/, pour que les deux ecrivent dans le meme hand_state.json lu
@@ -94,18 +97,35 @@ def vosk_grammar():
         + ["[unk]"]
     )
 
-_gant_link = None
+_links = []
 
 if os.environ.get("GANT_LCD_DISABLE") is None:
     try:
-        _gant_link = LcdLink()
+        _links.append(LcdLink())
     except Exception as e:
-        print(f"[LCD] Initialisation impossible ({e}) - retour en simulation LED")
-        _gant_link = None
+        print(f"[LCD] Initialisation impossible ({e})")
+
+if os.environ.get("GANT_PUMP_DISABLE") is None:
+    try:
+        _links.append(PumpLink(
+            on_bouton_urgence=lambda: urgence(),
+            on_bouton_reset=lambda: reset(),
+        ))
+    except Exception as e:
+        print(f"[POMPE] Initialisation impossible ({e})")
+
+if not _links:
+    print("[SIMULATION] Ni LCD ni pompe disponibles - retour en simulation LED")
 
 _state_lock = threading.Lock()
 _unlocked_until = 0.0
 _relock_timer = None
+
+
+def _set_ecoute(actif):
+    for link in _links:
+        if hasattr(link, "set_ecoute"):
+            link.set_ecoute(actif)
 
 
 def _relock():
@@ -113,8 +133,7 @@ def _relock():
     with _state_lock:
         _unlocked_until = 0.0
     print("[MOT DECLENCHEUR] Fenetre expiree, reverrouille.")
-    if _gant_link:
-        _gant_link.set_ecoute(False)
+    _set_ecoute(False)
 
 
 def _open_window(duration_s, message=None):
@@ -129,8 +148,7 @@ def _open_window(duration_s, message=None):
         _relock_timer.start()
     if message:
         print(message)
-    if _gant_link:
-        _gant_link.set_ecoute(True)
+    _set_ecoute(True)
 
 
 def _unlock():
@@ -154,14 +172,14 @@ def _close_window():
         if _relock_timer:
             _relock_timer.cancel()
             _relock_timer = None
-    if _gant_link:
-        _gant_link.set_ecoute(False)
+    _set_ecoute(False)
 
 
 def serrer():
     write_hand_state("fermer")
-    if _gant_link:
-        _gant_link.serrer()
+    if _links:
+        for link in _links:
+            link.serrer()
     else:
         # Cette LED est inversee: 0 = allumee, 1 = eteinte.
         LED_BRIGHTNESS_FILE.write_text("0")
@@ -170,8 +188,9 @@ def serrer():
 
 def desserrer():
     write_hand_state("ouvrir")
-    if _gant_link:
-        _gant_link.desserrer()
+    if _links:
+        for link in _links:
+            link.desserrer()
     else:
         LED_BRIGHTNESS_FILE.write_text("1")
         print("[SIMULATION] LED ACT eteinte (desserrer)")
@@ -179,26 +198,41 @@ def desserrer():
 
 def stop():
     write_hand_state("stop")
-    if _gant_link:
-        _gant_link.stop()
+    if _links:
+        for link in _links:
+            link.stop()
     else:
         print("[SIMULATION] stop (maintien de l'etat actuel)")
 
 
 def regonfler():
     write_hand_state("regonfler")
-    if _gant_link:
-        _gant_link.regonfler()
+    if _links:
+        for link in _links:
+            link.regonfler()
     else:
         print("[SIMULATION] regonfler (recharge courte)")
 
 
 def urgence():
     write_hand_state("urgence")
-    if _gant_link:
-        _gant_link.urgence()
+    if _links:
+        for link in _links:
+            link.urgence()
     else:
         print("[SIMULATION] URGENCE declenchee")
+
+
+def reset():
+    """Reset manuel vers INACTIF apres ARRET_URGENCE - declenche par le
+    bouton physique (voir pump_link.py), jamais automatiquement."""
+    write_hand_state("reset")
+    if _links:
+        for link in _links:
+            if hasattr(link, "reset"):
+                link.reset()
+    else:
+        print("[SIMULATION] reset (retour a l'etat inactif)")
 
 
 def strip_accents(text):
