@@ -8,14 +8,14 @@ Wants=bluetooth.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/home/louis/inclusive-maker
+WorkingDirectory=/home/louis/inclusive-maker/bluetooth_esp32
 # Adresse MAC Bluetooth de l'ESP32 (voir docs/CONTEXTE_PROJET.md).
 # GANT_WAKE_WORD peut aussi etre defini ici pour changer le mot declencheur.
 Environment=GANT_BT_MAC=30:76:F5:90:97:6A
 # Sans ça, Python bufferise sa sortie et les print() n'apparaissent pas en
 # temps reel dans "journalctl -f" (pas de TTY sous systemd).
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/home/louis/inclusive-maker/venv/bin/python /home/louis/inclusive-maker/voice_recognition.py --device 0
+ExecStart=/home/louis/inclusive-maker/bluetooth_esp32/venv/bin/python /home/louis/inclusive-maker/bluetooth_esp32/voice_recognition.py --device 0
 Restart=on-failure
 RestartSec=5
 
