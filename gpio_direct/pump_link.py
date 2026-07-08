@@ -35,8 +35,11 @@ ces memes relais en logique 3.3V).
 """
 import os
 import threading
+import time
 
 from gpiozero import Button, OutputDevice
+
+BOUTON_POLL_INTERVAL_S = 0.05
 
 POMPE_PIN = int(os.environ.get("GANT_GPIO_POMPE_PIN", "17"))
 VANNE_PIN = int(os.environ.get("GANT_GPIO_VANNE_PIN", "27"))
@@ -71,10 +74,28 @@ class PumpLink:
         self._on_bouton_urgence = on_bouton_urgence
         self._on_bouton_reset = on_bouton_reset
 
+        # Scrutation active plutot que when_pressed (interruption) : un
+        # bouton lu pendant que le relais pompe est actif peut souffrir de
+        # bruit electrique (appel de courant du relais) qui fait rater le
+        # front detecte par interruption. En reechantillonnant l'etat brut
+        # toutes les BOUTON_POLL_INTERVAL_S, un appui (qui dure au moins
+        # quelques centaines de ms) a de nombreuses chances d'etre capte
+        # meme si un ou deux echantillons sont perturbes.
         self._bouton = Button(bouton_pin, pull_up=True, bounce_time=0.05)
-        self._bouton.when_pressed = self._bouton_presse
+        self._bouton_stop = threading.Event()
+        self._bouton_thread = threading.Thread(target=self._surveiller_bouton, daemon=True)
+        self._bouton_thread.start()
 
         self._changer_etat(INACTIF, "demarrage")
+
+    def _surveiller_bouton(self):
+        etait_presse = False
+        while not self._bouton_stop.is_set():
+            presse = self._bouton.is_pressed
+            if presse and not etait_presse:
+                self._bouton_presse()
+            etait_presse = presse
+            time.sleep(BOUTON_POLL_INTERVAL_S)
 
     def _bouton_presse(self):
         print("[BOUTON] Appui detecte")
@@ -161,6 +182,8 @@ class PumpLink:
             if self._timer:
                 self._timer.cancel()
                 self._timer = None
+        self._bouton_stop.set()
+        self._bouton_thread.join(timeout=1)
         self._pompe.close()
         self._vanne.close()
         self._bouton.close()
