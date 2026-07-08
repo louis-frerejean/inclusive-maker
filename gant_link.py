@@ -42,36 +42,67 @@ class GantLink:
         self._keepalive_thread.start()
         print(f"[BT] Connecte a l'ESP32 ({self.mac_address})")
 
+    def _reconnect(self):
+        """Tente une reconnexion (ex: ESP32 pas encore pret au demarrage du
+        Pi, ou reconnecte apres une coupure). Ne leve jamais d'exception."""
+        try:
+            if self.sock:
+                self.sock.close()
+            self.sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+            self.sock.connect((self.mac_address, RFCOMM_CHANNEL))
+            print(f"[BT] Reconnecte a l'ESP32 ({self.mac_address})")
+            return True
+        except OSError as e:
+            print(f"[BT] Reconnexion impossible : {e}")
+            return False
+
     def _send_line(self, line):
-        self.sock.send((line + "\n").encode("utf-8"))
+        """Envoie une ligne, sans jamais faire planter l'appelant.
+
+        Une coupure Bluetooth ne doit pas arreter toute la reconnaissance
+        vocale : on tente une reconnexion, et si ca echoue on log juste un
+        avertissement. Le fail-safe cote ESP32 (perte des PING) prend le
+        relai pour la securite physique.
+        """
+        try:
+            self.sock.send((line + "\n").encode("utf-8"))
+            return True
+        except OSError as e:
+            print(f"[BT] Echec d'envoi ({line}) - liaison perdue ? : {e}")
+            if not self._reconnect():
+                return False
+            try:
+                self.sock.send((line + "\n").encode("utf-8"))
+                return True
+            except OSError as e2:
+                print(f"[BT] Echec d'envoi apres reconnexion ({line}) : {e2}")
+                return False
 
     def _keepalive_loop(self):
         while not self._stop_keepalive.is_set():
-            try:
-                self._send_line("PING")
-            except OSError:
-                break
+            self._send_line("PING")  # echec : _send_line reessaie/logge, la
+                                      # boucle continue pour retenter au tour suivant
             time.sleep(KEEPALIVE_INTERVAL_S)
 
     def serrer(self):
-        self._send_line("SERRER")
-        print("[ACTION] Commande envoyee a l'ESP32 : SERRER")
+        if self._send_line("SERRER"):
+            print("[ACTION] Commande envoyee a l'ESP32 : SERRER")
 
     def desserrer(self):
-        self._send_line("DESSERRER")
-        print("[ACTION] Commande envoyee a l'ESP32 : DESSERRER")
+        if self._send_line("DESSERRER"):
+            print("[ACTION] Commande envoyee a l'ESP32 : DESSERRER")
 
     def stop(self):
-        self._send_line("STOP")
-        print("[ACTION] Commande envoyee a l'ESP32 : STOP")
+        if self._send_line("STOP"):
+            print("[ACTION] Commande envoyee a l'ESP32 : STOP")
 
     def regonfler(self):
-        self._send_line("REGONFLER")
-        print("[ACTION] Commande envoyee a l'ESP32 : REGONFLER")
+        if self._send_line("REGONFLER"):
+            print("[ACTION] Commande envoyee a l'ESP32 : REGONFLER")
 
     def urgence(self):
-        self._send_line("URGENCE")
-        print("[ACTION] Commande envoyee a l'ESP32 : URGENCE")
+        if self._send_line("URGENCE"):
+            print("[ACTION] Commande envoyee a l'ESP32 : URGENCE")
 
     def close(self):
         self._stop_keepalive.set()

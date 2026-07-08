@@ -33,6 +33,16 @@ def log_transcription(log_path, text):
         f.write(f"[{timestamp}] {text}\n")
 
 
+def is_significant(text):
+    """Faux si le texte n'est fait que de "[unk]" (hors vocabulaire contraint).
+
+    Avec la grammaire contrainte (voir vosk_grammar()), toute conversation
+    normale sans rapport est transcrite en "[unk]" repetes - bruit inutile a
+    ne pas afficher/logger a chaque phrase prononcee pres du micro.
+    """
+    return any(token != "[unk]" for token in text.split())
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Reconnaissance vocale hors ligne (Vosk) pour Raspberry Pi"
@@ -83,9 +93,10 @@ def main():
                     result = json.loads(recognizer.Result())
                     text = result.get("text", "").strip()
                     if text:
-                        print(f"> {text}")
-                        log_transcription(args.log_file, text)
                         check_keywords(text)
+                        if is_significant(text):
+                            print(f"> {text}")
+                            log_transcription(args.log_file, text)
     except KeyboardInterrupt:
         print("\nArret de la reconnaissance vocale.")
     except Exception as e:

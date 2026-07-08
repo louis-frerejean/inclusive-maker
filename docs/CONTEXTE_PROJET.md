@@ -185,29 +185,56 @@ interfacer".
 
   | État | Sortie | Déclenché par | Auto |
   |---|---|---|---|
-  | INACTIF | pompe OFF, vanne ON | "desserrer" (après 8s), reset urgence | — |
-  | SERRAGE | pompe ON, vanne OFF | "serrer" (depuis INACTIF/STOP) | → STOP après 8s (gonflage complet) |
-  | DESSERRAGE | pompe OFF, vanne ON | "desserrer" (depuis STOP/SERRAGE) | → INACTIF après 8s |
+  | INACTIF | pompe OFF, vanne ON | "ouvrir" (après 5s), reset urgence | — |
+  | SERRAGE | pompe ON, vanne OFF | "fermer" (depuis INACTIF/STOP) | → STOP après 8s (gonflage complet) |
+  | DESSERRAGE | pompe OFF, vanne ON | "ouvrir" (depuis STOP/SERRAGE) | → INACTIF après 5s |
   | STOP | pompe OFF, vanne OFF | "stop" (depuis SERRAGE/DESSERRAGE/REGONFLAGE) | — |
-  | REGONFLAGE | pompe ON, vanne OFF | "regonfler" (depuis STOP uniquement) | → STOP après 2s |
-  | ARRET_URGENCE | pompe OFF, vanne ON | bouton physique **ou** mot vocal "urgence" | — (reset manuel par bouton uniquement) |
+  | REGONFLAGE | pompe ON, vanne OFF | "regonfler" (depuis n'importe quel état, sauf ARRET_URGENCE) | → STOP après 2s |
+  | ARRET_URGENCE | pompe OFF, vanne ON | bouton physique **ou** mot vocal "help" | — (reset manuel par bouton uniquement) |
 
-  Mots-ordres vocaux : **"serrer"**, **"desserrer"**, **"stop"**, **"regonfler"**,
-  **"urgence"** (+ "wake up" pour le mot déclencheur). "urgence" contourne
-  volontairement la fenêtre d'écoute (reconnu à tout moment, pas de délai avant un
-  arrêt d'urgence réel). Le bouton physique n'est plus le cycle générique d'origine :
-  il est maintenant dédié à l'arrêt d'urgence (1er appui = urgence, 2e appui = reset
-  vers INACTIF), correspondant à la fonction "bouton de sécurité" du cahier des
-  charges. Durées : gonflage complet et désserrage = 8s chacun (désserrage repris par
-  symétrie, pas de valeur donnée séparément — à confirmer), regonflage = 2s.
+  Mots-ordres vocaux : **"fermer"** (déclenche SERRAGE), **"ouvrir"** (déclenche
+  DESSERRAGE), **"stop"**, **"regonfler"**, **"help"** (déclenche ARRET_URGENCE ;
+  + "wake up" pour le mot déclencheur). "serrer"/"desserrer" ont été abandonnés :
+  même racine, se confondaient à la reconnaissance ("desserrer" contient
+  "serrer") — remplacés par la paire "ouvrir"/"fermer" déjà validée précédemment.
+  **"urgence" a aussi été abandonné (2026-07-07), remplacé par "help"** : mal
+  interprété par Vosk (même logique que le choix initial de "wake up" en
+  anglais — mot court, phonétiquement distinct des autres mots-ordres
+  français). "help" nécessite "wake up" comme les autres ordres (changement du
+  2026-07-07 : une version précédente le faisait contourner la fenêtre
+  d'écoute). Chaque ordre valide (y compris "help") prolonge la fenêtre : 5s
+  après "wake up", puis 10s après un premier ordre donné, pour enchaîner sans
+  redire "wake up" à chaque fois. Le bouton physique n'est plus le cycle
+  générique d'origine : il est maintenant dédié à l'arrêt d'urgence (1er appui =
+  urgence, 2e appui = reset vers INACTIF), correspondant à la fonction "bouton de
+  sécurité" du cahier des charges. Durées :
+  gonflage complet = 8s, désserrage = 5s, regonflage = 2s (équipe a carte blanche
+  sur le scénario tant que le besoin de base est couvert).
+  "regonfler" n'est plus limité à l'état STOP (2026-07-07) : utilisable à tout
+  moment pour remettre un peu d'air dès que la pression a baissé.
   Fail-safe perte liaison Bluetooth : retombe en INACTIF (pas ARRET_URGENCE, pour ne
-  pas exiger de reset manuel à chaque micro-coupure).
+  pas exiger de reset manuel à chaque micro-coupure) ; `gant_link.py` retente
+  automatiquement une reconnexion à chaque échec d'envoi (utile si l'ESP32 démarre
+  après le Pi).
+  **Logs série enrichis (2026-07-07)** : chaque transition affiche l'état précédent,
+  le nouvel état, la raison, et l'état des sorties ; une ligne `[STATUT]` périodique
+  (toutes les 2s) résume l'état courant, le temps restant avant transition
+  automatique, et si le Bluetooth est connecté — utile pour la démo et le débogage.
 
-  **Non encore testé sur le Pi/la vraie pompe** (contrairement à l'ancien modèle
-  ouvrir/fermer à 3 états, qui lui a été validé bout-en-bout le 2026-07-06 avant
-  cette refonte) — à retester avant la soutenance. **À confirmer avec Cécile** avant
-  de reflasher : le mapping des états, les durées choisies, et le rôle du bouton
-  physique redéfini en arrêt d'urgence.
+  **Testé et fonctionnel sur le Pi/la vraie pompe (2026-07-07)**, y compris après
+  les ajustements de durées et la levée de la contrainte STOP sur "regonfler".
+  **À confirmer avec Cécile** si pas déjà fait : le mapping des états et le rôle
+  du bouton physique redéfini en arrêt d'urgence.
+
+- **Autonomie du Pi (2026-07-07)** : service systemd `gant-vocal.service` (voir
+  `systemd/gant-vocal.service`) installé sur le Pi — la reconnaissance vocale
+  démarre automatiquement au boot, sans SSH ni intervention manuelle, et
+  redémarre seule en cas de plantage (`Restart=on-failure`). Testé après reboot
+  complet du Pi : fonctionne. `PYTHONUNBUFFERED=1` nécessaire dans le service
+  pour voir les logs en direct via `journalctl -u gant-vocal.service -f` (sinon
+  Python bufferise sa sortie hors TTY). Limite connue : `--device 0` est codé en
+  dur (index du périphérique audio USB) — à surveiller si l'ordre d'énumération
+  USB change un jour après reboot.
 
 ## À faire
 
