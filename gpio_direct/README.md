@@ -4,8 +4,8 @@
 pilote directement en GPIO a la fois un ecran **QAPASS LCD1602** (affichage
 texte) et la **vraie pompe/vanne** (module relais 2 canaux + bouton
 poussoir, fournis par Cecile), en parallele. Le visuel web de Clemence
-(`arduino/demo/visuel gants.html`, a la racine du depot) est aussi mis a
-jour a chaque commande.
+(`../dashboard/visuel-gants.html`) est aussi mis a jour a chaque commande
+via `hand_visual_state.py` (voir ci-dessous).
 
 (Une version anterieure passait par un ESP32 en Bluetooth - retiree du
 depot une fois cette version validee ; voir l'historique git si besoin.)
@@ -92,6 +92,21 @@ Suivre les logs en direct : `journalctl -u gant-vocal.service -f`. Le
 service redemarre automatiquement en cas de plantage (`Restart=on-failure`)
 - ca ne remplace pas un vrai fail-safe materiel (voir l'avertissement
 securite plus haut), ca evite juste d'avoir a relancer le script a la main.
+
+## Lancer le tableau de bord web
+
+Le fichier `../dashboard/visuel-gants.html` lit `hand_state.json` (ecrit
+par `hand_visual_state.py` a chaque commande) via `fetch()` - ca ne
+fonctionne pas en ouvrant le fichier directement dans un navigateur
+(`fetch()` est bloque sur `file://`), il faut un serveur HTTP :
+
+```bash
+cd ~/inclusive-maker   # racine du depot, pas gpio_direct/
+python3 -m http.server 8000
+```
+
+Puis ouvrir `http://<IP_DU_PI>:8000/dashboard/visuel-gants.html` depuis un
+navigateur sur le meme reseau.
 
 ## Tester sans LCD ni pompe branches
 

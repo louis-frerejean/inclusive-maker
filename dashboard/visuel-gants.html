@@ -69,13 +69,13 @@
         filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.25));
       }
       .hand.state-ouvrir .hand-graphic {
-        background-image: url('../Images_visuels_gants/gants_ouvrir.svg');
+        background-image: url('images/gants_ouvrir.svg');
       }
       .hand.state-fermer .hand-graphic {
-        background-image: url('../Images_visuels_gants/gants_fermer.svg');
+        background-image: url('images/gants_fermer.svg');
       }
       .hand.state-stop .hand-graphic {
-        background-image: url('../Images_visuels_gants/gants_stop.svg');
+        background-image: url('images/gants_stop.svg');
       }
       .controls {
         display: grid;
@@ -192,7 +192,7 @@
 
       async function loadState() {
         try {
-          const response = await fetch('../../hand_state.json', { cache: 'no-store' });
+          const response = await fetch('../gpio_direct/hand_state.json', { cache: 'no-store' });
           if (!response.ok) throw new Error('Pas de fichier d’état');
           const data = await response.json();
           updateVisual(data);

@@ -181,7 +181,10 @@ interfacer".
   défini (`GANT_BT_MAC` non renseignée), `keyword_actions.py` retombe sur la LED
   ACT du Pi comme simulation locale.
 - **Machine à états redéfinie (2026-07-06)**, plus fine que la version initiale à 3
-  états — voir `arduino/Pomp_control_V3/Pomp_control_v3/Pomp_control_v3.ino` :
+  états — définie à l'origine dans le firmware ESP32 `Pomp_control_v3.ino`
+  (retiré du dépôt le 2026-07-08, voir historique git), reprise à l'identique
+  dans `gpio_direct/lcd_link.py` et `gpio_direct/pump_link.py` (architecture
+  finale retenue pour la soutenance, sans ESP32) :
 
   | État | Sortie | Déclenché par | Auto |
   |---|---|---|---|

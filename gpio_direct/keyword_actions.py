@@ -40,19 +40,14 @@ sortie audio par defaut configuree). Voir docs/CONTEXTE_PROJET.md, section "A
 faire".
 """
 import os
-import sys
 import threading
 import time
 import unicodedata
 from pathlib import Path
 
+from hand_visual_state import write_hand_state
 from lcd_link import LcdLink
 from pump_link import PumpLink
-
-# hand_visual_state.py vit a la racine du depot, pour ecrire dans le meme
-# hand_state.json lu par arduino/demo/visuel gants.html.
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from hand_visual_state import write_hand_state
 
 LED_BRIGHTNESS_FILE = Path("/sys/class/leds/ACT/brightness")
 

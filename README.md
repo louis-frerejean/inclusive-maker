@@ -6,6 +6,12 @@ vraie pompe/vanne (module relais + bouton poussoir fournis par Cecile), en
 parallele. Voir [`gpio_direct/`](gpio_direct/) pour le code, le cablage et
 les consignes de securite avant de brancher la pompe.
 
+[`dashboard/`](dashboard/) contient un tableau de bord web (deux mains
+animees + etat pompe/vanne) qui lit en direct l'etat ecrit par
+`gpio_direct/hand_visual_state.py` - a servir via un serveur HTTP local
+(`fetch()` ne fonctionne pas en ouvrant le fichier directement), voir
+`gpio_direct/README.md`.
+
 Une version anterieure passait par un ESP32 intermediaire en Bluetooth
 (architecture initialement prevue au cahier des charges) ; elle a ete
 retiree du depot une fois `gpio_direct/` valide et retenu pour la
