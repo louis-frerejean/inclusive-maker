@@ -15,19 +15,19 @@
         min-height: 100vh;
       }
       .card {
-        width: min(92vw, 720px);
+        width: min(96vw, 900px);
         background: #111827;
-        border-radius: 20px;
-        padding: 24px;
-        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+        border-radius: 24px;
+        padding: 32px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
       }
       h1 {
         margin-top: 0;
-        font-size: 1.4rem;
+        font-size: 1.8rem;
       }
       .status {
-        margin: 8px 0 20px;
-        font-size: 1rem;
+        margin: 10px 0 24px;
+        font-size: 1.1rem;
         color: #cbd5e1;
       }
       .hand-grid {
@@ -40,86 +40,79 @@
       }
       .hand-card {
         width: 100%;
-        max-width: 320px;
-        padding: 18px;
-        border: 1px solid rgba(148, 163, 184, 0.18);
-        border-radius: 18px;
-        background: rgba(255, 255, 255, 0.03);
+        max-width: 380px;
+        padding: 22px;
+        border: 1px solid rgba(147, 197, 253, 0.35);
+        border-radius: 20px;
+        background: linear-gradient(135deg, rgba(191, 219, 254, 0.95), rgba(147, 197, 253, 0.9));
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 8px 20px rgba(37, 99, 235, 0.2);
       }
       .hand-card h2 {
-        margin: 0 0 10px;
-        font-size: 1rem;
+        margin: 0 0 12px;
+        font-size: 1.2rem;
         letter-spacing: 0.02em;
+        color: #000000;
       }
       .hand-svg {
         width: 100%;
-        height: auto;
+        height: 280px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
-      .hand-svg svg {
+      .hand-graphic {
         width: 100%;
-        height: 220px;
+        height: 100%;
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: contain;
+        filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.25));
       }
-      .finger {
-        transition: transform 0.35s ease, opacity 0.35s ease;
-        transform-origin: 110px 110px;
+      .hand.state-ouvrir .hand-graphic {
+        background-image: url('../Images_visuels_gants/gants_ouvrir.svg');
       }
-      .finger-1 { transform: rotate(0deg); }
-      .finger-2 { transform: rotate(0deg); }
-      .finger-3 { transform: rotate(0deg); }
-      .finger-4 { transform: rotate(0deg); }
-      .finger-5 { transform: rotate(0deg); }
-      .state-fermer .finger-1 { transform: rotate(-28deg); }
-      .state-fermer .finger-2 { transform: rotate(-22deg); }
-      .state-fermer .finger-3 { transform: rotate(-16deg); }
-      .state-fermer .finger-4 { transform: rotate(-10deg); }
-      .state-fermer .finger-5 { transform: rotate(-4deg); }
-      .state-ouvrir .finger-1 { transform: rotate(26deg); }
-      .state-ouvrir .finger-2 { transform: rotate(18deg); }
-      .state-ouvrir .finger-3 { transform: rotate(10deg); }
-      .state-ouvrir .finger-4 { transform: rotate(2deg); }
-      .state-ouvrir .finger-5 { transform: rotate(-4deg); }
-      .state-stop .finger-1 { transform: rotate(-8deg); }
-      .state-stop .finger-2 { transform: rotate(-4deg); }
-      .state-stop .finger-3 { transform: rotate(0deg); }
-      .state-stop .finger-4 { transform: rotate(4deg); }
-      .state-stop .finger-5 { transform: rotate(8deg); }
-      .state-stop .hand-shape { stroke: #fbbf24; }
+      .hand.state-fermer .hand-graphic {
+        background-image: url('../Images_visuels_gants/gants_fermer.svg');
+      }
+      .hand.state-stop .hand-graphic {
+        background-image: url('../Images_visuels_gants/gants_stop.svg');
+      }
       .controls {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 12px;
-        margin-bottom: 18px;
+        gap: 14px;
+        margin-bottom: 22px;
       }
       .control {
-        padding: 14px 16px;
+        padding: 16px 18px;
         border-radius: 16px;
         background: rgba(148, 163, 184, 0.08);
         border: 1px solid rgba(148, 163, 184, 0.14);
       }
       .control strong {
         display: block;
-        font-size: 0.95rem;
+        font-size: 1rem;
         margin-bottom: 8px;
         color: #e2e8f0;
       }
       .value {
-        font-size: 1.2rem;
+        font-size: 1.35rem;
         font-weight: 700;
       }
       .value.on { color: #34d399; }
       .value.off { color: #f87171; }
       .actions {
         display: flex;
-        gap: 10px;
+        gap: 12px;
         flex-wrap: wrap;
-        margin-bottom: 24px;
+        margin-bottom: 28px;
       }
       .action-pill {
-        padding: 10px 14px;
+        padding: 12px 16px;
         border-radius: 999px;
         background: rgba(148, 163, 184, 0.1);
         color: #cbd5e1;
-        font-size: 0.95rem;
+        font-size: 1rem;
       }
       .action-pill.active {
         background: #2563eb;
@@ -167,27 +160,13 @@
         <div class="hand-card">
           <h2>Gant gauche</h2>
           <div class="hand-svg hand" id="hand-left">
-            <svg viewBox="0 0 320 260" aria-label="Gant gauche">
-              <rect x="95" y="70" width="130" height="115" rx="40" fill="none" stroke="#f8fafc" stroke-width="6" class="hand-shape" />
-              <line x1="110" y1="95" x2="80" y2="60" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" class="finger finger-1" />
-              <line x1="132" y1="95" x2="110" y2="40" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" class="finger finger-2" />
-              <line x1="154" y1="95" x2="150" y2="30" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" class="finger finger-3" />
-              <line x1="176" y1="95" x2="190" y2="40" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" class="finger finger-4" />
-              <line x1="198" y1="95" x2="240" y2="60" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" class="finger finger-5" />
-            </svg>
+            <div class="hand-graphic" aria-label="Gant gauche"></div>
           </div>
         </div>
         <div class="hand-card">
           <h2>Gant droit</h2>
           <div class="hand-svg hand" id="hand-right">
-            <svg viewBox="0 0 320 260" aria-label="Gant droit">
-              <rect x="95" y="70" width="130" height="115" rx="40" fill="none" stroke="#f8fafc" stroke-width="6" class="hand-shape" />
-              <line x1="110" y1="95" x2="80" y2="60" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" class="finger finger-1" />
-              <line x1="132" y1="95" x2="110" y2="40" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" class="finger finger-2" />
-              <line x1="154" y1="95" x2="150" y2="30" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" class="finger finger-3" />
-              <line x1="176" y1="95" x2="190" y2="40" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" class="finger finger-4" />
-              <line x1="198" y1="95" x2="240" y2="60" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" class="finger finger-5" />
-            </svg>
+            <div class="hand-graphic" aria-label="Gant droit"></div>
           </div>
         </div>
       </div>
@@ -230,8 +209,8 @@
         pumpStateEl.textContent = 'OFF';
         pumpStateEl.className = 'value off';
         setActionActive(null);
-        handLeft.className = 'hand';
-        handRight.className = 'hand';
+        handLeft.className = 'hand-svg hand';
+        handRight.className = 'hand-svg hand';
       }
 
       function updateVisual(data) {
@@ -246,8 +225,8 @@
         pumpStateEl.className = `value ${mapped.pump === 'ON' ? 'on' : 'off'}`;
 
         setActionActive(state);
-        handLeft.className = `hand state-${state}`;
-        handRight.className = `hand state-${state}`;
+        handLeft.className = `hand-svg hand state-${state}`;
+        handRight.className = `hand-svg hand state-${state}`;
       }
 
       function setActionActive(state) {
