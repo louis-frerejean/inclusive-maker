@@ -1,12 +1,17 @@
-# Inclusive Maker - Version demo (Grove LCD RGB Backlight, Pi 5)
+# Inclusive Maker - Version demo (QAPASS LCD1602, Pi 5)
 
 **Version utilisee pour la soutenance du 2026-07-09.** Contrairement a
 [`../bluetooth_esp32/`](../bluetooth_esp32/) (Pi -> Bluetooth -> ESP32 ->
 pompe reelle), aucune pompe ni ESP32 n'est branche pour la demo : seul un
-ecran **Grove LCD RGB Backlight v4.0** est cable sur le breadboard, relie en
-I2C au Pi 5. Il affiche l'ordre qui serait envoye a la pompe (texte +
-couleur de retroeclairage), pour simuler visuellement le comportement sans
-materiel pneumatique sur scene.
+ecran **QAPASS LCD1602** (I2C, backpack PCF8574) est cable sur le
+breadboard, relie en I2C au Pi 5. Il affiche l'ordre qui serait envoye a la
+pompe (texte), pour simuler visuellement le comportement sans materiel
+pneumatique sur scene.
+
+Un premier module (Grove LCD RGB Backlight v4.0) avait ete teste avant
+celui-ci mais s'est revele defectueux (ligne SCL bloquee a l'etat bas
+quel que soit le cablage, confirme le 2026-07-08) - voir l'historique dans
+`lcd_link.py`.
 
 `voice_recognition.py` est une copie inchangee de la version Bluetooth (rien
 la dedans n'est specifique au mode d'affichage). `keyword_actions.py` est
@@ -17,20 +22,21 @@ le LCD au lieu de piloter des relais.
 
 ## Cablage
 
-Grove LCD RGB Backlight v4.0 sur breadboard, relie au bus I2C du Pi 5 :
+QAPASS LCD1602 sur breadboard, relie au bus I2C du Pi 5 :
 
-| Grove | Pi 5 |
+| LCD1602 | Pi 5 |
 |---|---|
 | GND | GND |
-| VCC | 5V |
-| SDA | GPIO2 (SDA) |
-| SCL | GPIO3 (SCL) |
+| VCC | **3.3V** (pas 5V - le Pi n'est pas tolerant 5V sur ses GPIO) |
+| SDA | GPIO2 (SDA1) |
+| SCL | GPIO3 (SCL1) |
 
 Avant de lancer quoi que ce soit :
 
-1. Activer l'I2C : `sudo raspi-config` -> *Interface Options* -> *I2C* -> activer, puis redemarrer.
-2. Verifier que le module est vu : `sudo i2cdetect -y 1`. On doit voir apparaitre `3e` (texte) et `30` ou `62` (retroeclairage RGB selon la version - le v4.0 utilise normalement `0x30`, l'ancien v2.0 `0x62`).
-3. Si l'adresse RGB detectee n'est pas `0x30`, la surcharger : `export GANT_LCD_RGB_ADDR=0x62` (ou l'adresse vue par `i2cdetect`) avant de lancer `voice_recognition.py`.
+1. Activer l'I2C : `sudo raspi-config` -> *Interface Options* -> *I2C* -> activer.
+2. Verifier que le module est vu : `sudo i2cdetect -y 1`. On doit voir apparaitre `27` (adresse par defaut du backpack PCF8574).
+3. Si l'adresse detectee n'est pas `0x27` (cavaliers A0/A1/A2 soudes differemment), la surcharger : `export GANT_LCD_I2C_ADDR=0x3f` (ou l'adresse vue par `i2cdetect`) avant de lancer `voice_recognition.py`.
+4. Si l'ecran s'allume mais que le texte est invisible/flou, ajuster le petit potentiometre bleu au dos du module (contraste) - normal d'avoir besoin d'un reglage plus fin en 3.3V qu'en 5V.
 
 ## Installation
 
@@ -42,7 +48,7 @@ cd gpio_direct
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-python voice_recognition.py --model ../bluetooth_esp32/models/vosk-model-small-fr-0.22 --list-devices
+python voice_recognition.py --model ../models/vosk-model-small-fr-0.22 --list-devices
 ```
 
 ## Tester sans le LCD branche

@@ -214,16 +214,23 @@ def check_keywords(text):
 
     if _matches(normalized, URGENCE_KEYWORDS):
         _close_window()
+        print(f'[ECOUTE] "{text}" -> URGENCE')
         urgence()
     elif _matches(normalized, SERRER_KEYWORDS):
         _extend_window()
+        print(f'[ECOUTE] "{text}" -> SERRER (fermer)')
         serrer()
     elif _matches(normalized, DESSERRER_KEYWORDS):
         _extend_window()
+        print(f'[ECOUTE] "{text}" -> DESSERRER (ouvrir)')
         desserrer()
     elif _matches(normalized, STOP_KEYWORDS):
         _extend_window()
+        print(f'[ECOUTE] "{text}" -> STOP')
         stop()
     elif _matches(normalized, REGONFLER_KEYWORDS):
         _extend_window()
+        print(f'[ECOUTE] "{text}" -> REGONFLER')
         regonfler()
+    else:
+        print(f'[ECOUTE] "{text}" -> non reconnu comme commande')

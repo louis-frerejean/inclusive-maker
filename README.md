@@ -6,8 +6,8 @@ Deux versions du pipeline reconnaissance vocale -> pilotage pompe/gant :
   pour la soutenance (2026-07-09). Pi -> Bluetooth -> ESP32 (firmware/hardware
   pompe geres par Cecile) -> pompe/gant.
 - [`gpio_direct/`](gpio_direct/) - **version demo**, utilisee pour la
-  soutenance (2026-07-09). Pi -> I2C direct -> ecran Grove LCD RGB Backlight
-  v4.0 (sur breadboard), sans ESP32 ni pompe reelle : affiche l'ordre qui
+  soutenance (2026-07-09). Pi -> I2C direct -> ecran QAPASS LCD1602
+  (sur breadboard), sans ESP32 ni pompe reelle : affiche l'ordre qui
   serait envoye a la pompe, pour simuler le comportement sans materiel
   pneumatique sur scene.
 

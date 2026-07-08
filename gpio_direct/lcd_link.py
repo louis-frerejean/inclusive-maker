@@ -1,4 +1,4 @@
-"""Affichage sur ecran Grove LCD RGB Backlight v4.0 (I2C) des ordres qui
+"""Affichage sur ecran QAPASS LCD1602 (I2C, backpack PCF8574) des ordres qui
 seraient envoyes a la pompe - utilise pour la demo/soutenance (2026-07-09),
 en l'absence de pompe et d'ESP32 physiquement branches (seul le LCD est sur
 le breadboard). Reprend la meme machine a etats que le firmware ESP32 (voir
@@ -6,17 +6,26 @@ bluetooth_esp32/arduino/Pomp_control_V3/.../Pomp_control_v3.ino), y compris
 les transitions automatiques par duree, mais l'affiche sur le LCD au lieu de
 piloter des relais pompe/vanne.
 
-Cablage : Grove LCD RGB Backlight v4.0 sur breadboard, relie au bus I2C du
-Pi 5 (GPIO2=SDA, GPIO3=SCL, + alimentation 5V/GND). Le module expose deux
-peripheriques I2C a des adresses fixes :
-    0x3E -> controleur texte (identique sur toutes les versions du module)
-    0x30 -> controleur retroeclairage RGB (0x30 sur le v4.0 ; 0x62 sur
-            l'ancien v2.0 - a verifier avec `i2cdetect -y 1` si l'ecran
-            reste blanc/eteint, et corriger via GANT_LCD_RGB_ADDR si besoin)
+Remplace la premiere version ecrite pour un Grove LCD RGB Backlight v4.0 :
+ce module s'est revele defectueux au test (2026-07-08, ligne SCL bloquee a
+l'etat bas quel que soit le cablage - diagnostic confirme en debranchant le
+Grove directement de l'ecran). Le QAPASS LCD1602 n'a pas de retroeclairage
+RGB pilotable (juste allume/eteint, une seule couleur fixe), donc plus de
+changement de couleur par etat ici - juste le texte.
 
-Activer l'I2C au prealable sur le Pi (`sudo raspi-config` -> Interface
-Options -> I2C), puis verifier que le module est bien vu :
-    sudo i2cdetect -y 1
+Cablage : GND/VCC/SDA/SCL relies au bus I2C du Pi 5 (GPIO2=SDA, GPIO3=SCL).
+VCC sur 3.3V (pas 5V : le Pi n'est pas tolerant 5V sur ses GPIO). Si le
+contraste est trop faible en 3.3V, ajuster le petit potentiometre bleu au
+dos du module plutot que de passer en 5V.
+
+Adresse I2C par defaut : 0x27 (modifiable par les cavaliers A0/A1/A2 au dos
+du module - si non detecte a 0x27 via `i2cdetect -y 1`, relever l'adresse
+reellement affichee et la passer via GANT_LCD_I2C_ADDR).
+
+Protocole : backpack PCF8574 pilotant un controleur HD44780 standard en
+mode 4 bits. Brochage PCF8574 -> HD44780 (convention universelle de ces
+backpacks) : P0=RS, P1=RW (toujours a 0, ecriture seule), P2=E,
+P3=retroeclairage, P4-P7=D4-D7 (nibble haut).
 """
 import os
 import threading
@@ -24,9 +33,12 @@ import time
 
 from smbus2 import SMBus
 
-LCD_ADDR = 0x3E
-RGB_ADDR = int(os.environ.get("GANT_LCD_RGB_ADDR", "0x30"), 16)
+LCD_ADDR = int(os.environ.get("GANT_LCD_I2C_ADDR", "0x27"), 16)
 I2C_BUS = int(os.environ.get("GANT_LCD_I2C_BUS", "1"))
+
+RS_BIT = 0x01
+E_BIT = 0x04
+BACKLIGHT_BIT = 0x08
 
 DUREE_GONFLAGE_S = 8.0
 DUREE_DESSERRAGE_S = 5.0
@@ -36,72 +48,102 @@ INACTIF, SERRAGE, DESSERRAGE, STOP, REGONFLAGE, ARRET_URGENCE = (
     "INACTIF", "SERRAGE", "DESSERRAGE", "STOP", "REGONFLAGE", "ARRET_URGENCE",
 )
 
-# (texte 2 lignes, couleur RGB 0-255) par etat - couleurs choisies pour une
-# lecture rapide par le jury : vert=repos, bleu=montee en pression,
-# jaune=maintien, orange=relachement, rouge=urgence.
-_ETAT_AFFICHAGE = {
-    INACTIF:       ("INACTIF\nvanne ouverte", (0, 60, 0)),
-    SERRAGE:       ("SERRAGE\npompe ON", (0, 0, 90)),
-    DESSERRAGE:    ("DESSERRAGE\nvanne ouverte", (90, 40, 0)),
-    STOP:          ("STOP\nmaintien press.", (90, 90, 0)),
-    REGONFLAGE:    ("REGONFLAGE\npompe ON", (0, 60, 90)),
-    ARRET_URGENCE: ("ARRET URGENCE\n(reset manuel)", (90, 0, 0)),
+# Ligne 2 (16 caracteres max) par etat : les etats de transition (pompe en
+# train de tourner) affichent une action en cours ("..."), les etats stables
+# affichent la position de la main (ouverte/fermee).
+_ETAT_LIGNE2 = {
+    INACTIF:       "MAIN OUVERTE",
+    SERRAGE:       "FERMETURE...",
+    DESSERRAGE:    "OUVERTURE...",
+    STOP:          "MAIN FERMEE",
+    REGONFLAGE:    "RECHARGE...",
+    ARRET_URGENCE: "URGENCE !",
 }
+
+ECOUTE_TEXTE = "A L'ECOUTE..."
 
 
 class LcdLink:
     """Meme interface que GantLink (serrer/desserrer/stop/regonfler/urgence/
     close), pour rester compatible avec keyword_actions.py sans le modifier
     autrement que l'import. Pas de connect() ni de PING ici : pas de liaison
-    a maintenir, le LCD est ecrit en direct a chaque changement d'etat."""
+    a maintenir, le LCD est ecrit en direct a chaque changement d'etat.
 
-    def __init__(self, bus=I2C_BUS):
+    Ecran divise en deux lignes independantes :
+      - ligne 1 : uniquement l'etat d'ecoute du mot declencheur (vide si
+        hors fenetre d'ecoute) - pilotee par set_ecoute(), appelee depuis
+        keyword_actions.py.
+      - ligne 2 : etat de la pompe (action en cours ou position stable de
+        la main) - pilotee par les methodes serrer/desserrer/stop/... comme
+        avant.
+    """
+
+    def __init__(self, addr=LCD_ADDR, bus=I2C_BUS):
+        self._addr = addr
         self._i2c = SMBus(bus)
         self._lock = threading.Lock()
         self._timer = None
         self._etat = None
+        self._init_lcd()
+        self._set_ligne(0, "")
         self._changer_etat(INACTIF, "demarrage")
 
-    def _reg_lcd(self, reg, data):
-        self._i2c.write_byte_data(LCD_ADDR, reg, data)
+    def _write_byte(self, bits):
+        self._i2c.write_byte(self._addr, bits | BACKLIGHT_BIT)
 
-    def _reg_rgb(self, reg, data):
-        self._i2c.write_byte_data(RGB_ADDR, reg, data)
+    def _write4(self, bits):
+        # Pulse du signal Enable : le HD44780 lit les 4 bits de donnees sur
+        # le front descendant de E.
+        self._write_byte(bits)
+        self._write_byte(bits | E_BIT)
+        time.sleep(0.0005)
+        self._write_byte(bits)
+        time.sleep(0.0001)
 
-    def _set_backlight(self, r, g, b):
-        # Sequence d'init/ecriture du controleur RGB (PCA9633), reprise du
-        # protocole standard du module Grove LCD RGB Backlight.
-        self._reg_rgb(0x00, 0x00)
-        self._reg_rgb(0x01, 0x00)
-        self._reg_rgb(0x08, 0xAA)
-        self._reg_rgb(0x04, r)
-        self._reg_rgb(0x03, g)
-        self._reg_rgb(0x02, b)
+    def _send(self, data, rs):
+        self._write4(rs | (data & 0xF0))
+        self._write4(rs | ((data << 4) & 0xF0))
 
-    def _set_text(self, text):
-        self._reg_lcd(0x80, 0x01)         # clear display
+    def _command(self, cmd):
+        self._send(cmd, 0x00)
+
+    def _write_char(self, char):
+        self._send(ord(char), RS_BIT)
+
+    def _init_lcd(self):
         time.sleep(0.05)
-        self._reg_lcd(0x80, 0x08 | 0x04)  # display on, curseur masque
-        self._reg_lcd(0x80, 0x28)         # mode 2 lignes
-        time.sleep(0.05)
-        col = 0
-        row = 0
-        for c in text:
-            if c == "\n" or col == 16:
-                col = 0
-                row += 1
-                if row == 2:
-                    break
-                self._reg_lcd(0x80, 0xC0)  # curseur -> debut de la 2e ligne
-                if c == "\n":
-                    continue
-            col += 1
-            self._reg_lcd(0x40, ord(c))
+        # Sequence de reset standard HD44780 (voir datasheet, mode 4 bits).
+        self._write4(0x30)
+        time.sleep(0.005)
+        self._write4(0x30)
+        time.sleep(0.001)
+        self._write4(0x30)
+        time.sleep(0.001)
+        self._write4(0x20)   # passage en mode 4 bits
+        self._command(0x28)  # 4 bits, 2 lignes, police 5x8
+        self._command(0x0C)  # affichage on, curseur/clignotement off
+        self._command(0x06)  # increment, pas de decalage
+        self._command(0x01)  # clear
+        time.sleep(0.002)
+
+    def _set_ligne(self, num, texte):
+        # Complete a 16 caracteres avec des espaces pour effacer tout residu
+        # d'un texte plus long affiche precedemment sur cette ligne (pas de
+        # clear ici : on ne touche pas l'autre ligne).
+        texte = texte[:16].ljust(16)
+        self._command(0x80 if num == 0 else 0xC0)  # debut ligne 1 / ligne 2
+        for c in texte:
+            self._write_char(c)
+
+    def set_ecoute(self, actif):
+        """Ligne 1, independante de l'etat de la pompe : vide hors fenetre
+        d'ecoute, message fixe pendant la fenetre. Appelee depuis
+        keyword_actions.py a l'ouverture/fermeture de la fenetre d'ecoute."""
+        with self._lock:
+            self._set_ligne(0, ECOUTE_TEXTE if actif else "")
 
     def _appliquer_etat(self, etat):
-        texte, couleur = _ETAT_AFFICHAGE[etat]
-        self._set_text(texte)
-        self._set_backlight(*couleur)
+        self._set_ligne(1, _ETAT_LIGNE2[etat])
 
     def _changer_etat(self, nouvel_etat, raison, duree_auto=None, etat_suivant=None):
         with self._lock:
@@ -160,7 +202,7 @@ class LcdLink:
                 self._timer.cancel()
                 self._timer = None
         try:
-            self._set_text("")
-            self._set_backlight(0, 0, 0)
+            self._command(0x01)   # clear
+            self._i2c.write_byte(self._addr, 0x00)  # coupe le retroeclairage
         finally:
             self._i2c.close()

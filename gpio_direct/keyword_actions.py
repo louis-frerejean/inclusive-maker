@@ -106,6 +106,8 @@ def _relock():
     with _state_lock:
         _unlocked_until = 0.0
     print("[MOT DECLENCHEUR] Fenetre expiree, reverrouille.")
+    if _gant_link:
+        _gant_link.set_ecoute(False)
 
 
 def _open_window(duration_s, message=None):
@@ -120,6 +122,8 @@ def _open_window(duration_s, message=None):
         _relock_timer.start()
     if message:
         print(message)
+    if _gant_link:
+        _gant_link.set_ecoute(True)
 
 
 def _unlock():
@@ -143,6 +147,8 @@ def _close_window():
         if _relock_timer:
             _relock_timer.cancel()
             _relock_timer = None
+    if _gant_link:
+        _gant_link.set_ecoute(False)
 
 
 def serrer():
@@ -216,16 +222,23 @@ def check_keywords(text):
 
     if _matches(normalized, URGENCE_KEYWORDS):
         _close_window()
+        print(f'[ECOUTE] "{text}" -> URGENCE')
         urgence()
     elif _matches(normalized, SERRER_KEYWORDS):
         _extend_window()
+        print(f'[ECOUTE] "{text}" -> SERRER (fermer)')
         serrer()
     elif _matches(normalized, DESSERRER_KEYWORDS):
         _extend_window()
+        print(f'[ECOUTE] "{text}" -> DESSERRER (ouvrir)')
         desserrer()
     elif _matches(normalized, STOP_KEYWORDS):
         _extend_window()
+        print(f'[ECOUTE] "{text}" -> STOP')
         stop()
     elif _matches(normalized, REGONFLER_KEYWORDS):
         _extend_window()
+        print(f'[ECOUTE] "{text}" -> REGONFLER')
         regonfler()
+    else:
+        print(f'[ECOUTE] "{text}" -> non reconnu comme commande')
