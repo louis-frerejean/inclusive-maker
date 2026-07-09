@@ -102,8 +102,6 @@ marche même avec un sèche-mains en marche)
   https://trello.com/invite/b/6a451f5f803e95e6e375734c/ATTI4ea2d66af8df5458c0eb972c1566785236F266BA/fork-1-commande-vocale
 - **Hackster.io** (documentation open-source à produire, exigée par le cadre pédagogique) :
   https://www.hackster.io/551074/2026-catch-all-fork-1-714765
-- Ressources fournies par l'intervenante dans [Ressources mis a disposition par l'intervenante/](Ressources%20mis%20a%20disposition%20par%20l'intervenante/)
-  (cahier des charges méthode, biais cognitifs, guides MyoWare pour Fork 2, interviews audio, etc.)
 
 ## Décision d'architecture : local vs cloud (2026-07-03)
 

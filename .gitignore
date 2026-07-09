@@ -15,10 +15,6 @@ logs/
 # l'execution, pas du code source - voir gpio_direct/hand_visual_state.py)
 gpio_direct/hand_state.json
 
-# Ressources fournies par l'intervenante : contient des enregistrements
-# audio d'interview et des PDF tiers, non destines a etre publies
-docs/Ressources mis a disposition par l'intervenante/
-
 # OS
 .DS_Store
 Thumbs.db

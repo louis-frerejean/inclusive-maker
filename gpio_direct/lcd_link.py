@@ -84,6 +84,7 @@ class LcdLink:
         self._lock = threading.Lock()
         self._timer = None
         self._etat = None
+        self._urgence_ts = None
         self._init_lcd()
         self._set_ligne(0, "")
         self._changer_etat(INACTIF, "demarrage")
@@ -194,13 +195,27 @@ class LcdLink:
         self._changer_etat(REGONFLAGE, "commande vocale REGONFLER", DUREE_REGONFLAGE_S, STOP)
 
     def urgence(self):
+        with self._lock:
+            self._urgence_ts = time.monotonic()
         self._changer_etat(ARRET_URGENCE, "commande vocale URGENCE")
 
     def reset(self):
         """Reset manuel vers INACTIF - jamais appele automatiquement, sur
         action explicite seulement (bouton physique en ARRET_URGENCE, voir
-        pump_link.py)."""
-        self._changer_etat(INACTIF, "reset (bouton apres urgence)")
+        pump_link.py). Doit rester synchronise avec la meme logique dans
+        pump_link.py: si moins de DUREE_DESSERRAGE_S s'est ecoulee depuis
+        l'urgence, la main n'a pas fini de se depressuriser physiquement -
+        afficher "MAIN OUVERTE" tout de suite serait faux, on affiche donc
+        "OUVERTURE..." (DESSERRAGE) le temps restant avant de declarer
+        INACTIF."""
+        with self._lock:
+            started = self._urgence_ts
+        elapsed = time.monotonic() - started if started else DUREE_DESSERRAGE_S
+        remaining = max(0.0, DUREE_DESSERRAGE_S - elapsed)
+        if remaining > 0:
+            self._changer_etat(DESSERRAGE, "reset (fin de depressurisation)", remaining, INACTIF)
+        else:
+            self._changer_etat(INACTIF, "reset (bouton apres urgence)")
 
     def close(self):
         with self._lock:

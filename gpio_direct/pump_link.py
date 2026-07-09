@@ -72,6 +72,7 @@ class PumpLink:
         self._lock = threading.Lock()
         self._timer = None
         self._etat = None
+        self._urgence_ts = None
         self._on_bouton_urgence = on_bouton_urgence
         self._on_bouton_reset = on_bouton_reset
 
@@ -140,8 +141,23 @@ class PumpLink:
 
     def reset(self):
         """Reset manuel vers INACTIF - jamais appele automatiquement, sur
-        action explicite seulement (bouton en ARRET_URGENCE)."""
-        self._changer_etat(INACTIF, "reset (bouton apres urgence)")
+        action explicite seulement (bouton en ARRET_URGENCE).
+
+        La vanne vente depuis l'entree en ARRET_URGENCE (meme sortie
+        physique que DESSERRAGE), mais si le bouton est represse avant que
+        DUREE_DESSERRAGE_S se soit ecoulee depuis l'urgence, la main n'a pas
+        eu le temps de se depressuriser completement : passer directement a
+        INACTIF ("MAIN OUVERTE") mentirait sur son etat physique reel. On
+        termine donc la depressurisation restante (etat DESSERRAGE) avant de
+        declarer INACTIF."""
+        with self._lock:
+            started = self._urgence_ts
+        elapsed = time.monotonic() - started if started else DUREE_DESSERRAGE_S
+        remaining = max(0.0, DUREE_DESSERRAGE_S - elapsed)
+        if remaining > 0:
+            self._changer_etat(DESSERRAGE, "reset (fin de depressurisation)", remaining, INACTIF)
+        else:
+            self._changer_etat(INACTIF, "reset (bouton apres urgence)")
 
     def serrer(self):
         with self._lock:
@@ -176,6 +192,8 @@ class PumpLink:
         self._changer_etat(REGONFLAGE, "commande vocale REGONFLER", DUREE_REGONFLAGE_S, STOP)
 
     def urgence(self):
+        with self._lock:
+            self._urgence_ts = time.monotonic()
         self._changer_etat(ARRET_URGENCE, "commande vocale URGENCE")
 
     def close(self):
